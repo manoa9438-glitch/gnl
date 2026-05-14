@@ -6,27 +6,13 @@
 /*   By: mabrugge <mabrugge@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/11 17:06:40 by mabrugge          #+#    #+#             */
-/*   Updated: 2026/05/12 16:41:43 by mabrugge         ###   ########.fr       */
+/*   Updated: 2026/05/14 13:11:36 by mabrugge         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
 
 #define BUFFER_SIZE 10
-
-int ft_strlen(const char *str)
-{
-    if(!str || str[0] == '\0')
-        return (0);
-    int i;
-
-    i = 0;
-    while (str[i])
-    {
-        i++;
-    }
-    return (i);
-}
 
 char *ft_strdup(char *src)
 {
@@ -50,99 +36,115 @@ char *ft_strdup(char *src)
     return (dst);
 }
 
-char *update_line(char *buffer, int *i, char *new_rest, int position)
+char *update_line(char *buffer, int number_bytes, char **rest, int position)
 {
     int len_rest;
     char *line;
     int y;
+    int j;
 
     y = 0;
-    line = malloc(sizeof(char) * (position));
-    len_rest = ft_strlen(new_rest);
-    if (len_rest > 0)
+
+    line = malloc(sizeof(char) * (position) + 1);
+    if (*rest != NULL)
     {
-        while (*i < len_rest)
+        
+        while(*rest[y])
         {
-            line[*i] = new_rest[*i];
-            (*i)++;
+            line[y] = (*rest)[y];
+            y++;
         }
     }
-    while (y <= position)
+    j = 0;
+
+    while (y < position)
     {
-        line[*i] = buffer[y];
+        line[y] = buffer[j++];
         y++;
-        (*i)++;
     }
+    line[y] = '\0';
     return (line);
 }
 
 char *construct_line(char *buffer, int *i, char **rest, int number_bytes)
 {
     int position;
-    char *new_rest;
     char *line;
     int y;
 
     y = 0;
     position = *i;
     *i = 0;
-    new_rest = *rest;
-    free(*rest);
     *rest = malloc(sizeof(char) * (number_bytes - (position + 1)));
-    line = update_line(buffer, i, new_rest, position);
-    while (position <= number_bytes)
+    while (position < number_bytes - position)
     {
         (*rest)[y] = buffer[position];
         y++;
         position++;
     }
-    (*rest[y]) = '\0'; 
+    (*rest)[y] = '\0'; 
+    line = update_line(buffer, number_bytes, rest, position);
+    free(*rest);
     return (line);
 }
 
-char *return_last_line(char **rest, char **last_rest)
+char *return_last_line(char **rest)
 {
     char *line;
-    line = ft_strjoin(*last_rest, *rest);
-   //  free(rest);
+   // line = ft_strjoin(*tmp, *rest);
+ //   free(*tmp);
     *rest = NULL;
     return (line);
 }
 
+char *return_buffer(int number_bytes, char *buffer)
+{
+    int i;
+    char *str;
+
+    i = 0;
+    str = malloc(number_bytes + 1);
+    while(i < number_bytes)
+    {
+      str[i] = buffer[i];
+      i++;
+    }
+    str[i] = '\0';
+    return (str);
+}
+
 char *get_next_line(int fd)
 {
-    char buffer[100];
+   char buffer[BUFFER_SIZE + 1];
     int i;
     int y;
     int number_bytes;
-    char static *last_rest;
     char static *rest;
 
     while ((number_bytes = read(fd, buffer, BUFFER_SIZE)) > 0)
     {
+
         i = 0;
         y = 0;
         while(i < number_bytes)
         {
             if (buffer[i] == '\n' && i != 0)
+            {
                 return (construct_line(buffer, &i, &rest, number_bytes));
+            }
             i++;
         }
-        if(rest)
-            {   
-                last_rest = ft_strdup(rest);   
-                free(rest);
-            }
-        rest = malloc(sizeof(char) * (number_bytes + 1));
-        while(y < number_bytes)
+        if(!rest)
         {
-            rest[y] = buffer[y];
-            y++;
+            rest = return_buffer(number_bytes, buffer);
         }
-        rest[y] = '\0';
+        else
+        {
+            rest = ft_strjoin(rest, return_buffer(number_bytes, buffer));
+        }
     }
     if (number_bytes == 0 && rest != NULL)
-        return (return_last_line(&rest, &last_rest));
+       return (return_last_line(&rest));
     return (NULL);
 }
 
@@ -154,11 +156,17 @@ int main(void)
     fd = open("test.txt", O_RDONLY);
     if (fd < 0)
         return (1);
-    while ((line = get_next_line(fd)) != NULL)
-    {
-        printf("%s", line);
-        free(line);
-    }
+    line = get_next_line(fd);
+    if (line)
+        printf("addres %p: line: %s", line,line);
+    line = get_next_line(fd);
+    if (line)
+        printf("addres %p: line: %s", line,line);
+    // while ((line = get_next_line(fd)) != NULL)
+    // {
+    //     printf("%s", line);
+    //     free(line);
+    // }
 
     close(fd);
 }
